@@ -46,6 +46,9 @@ hyper = {version = "0.14", features = ["server"], optional = true}
 tokio = { version = "1.2", features = ["full"], optional = true }
 wasm-bindgen = { version = "=0.2.70", features = ["serde-serialize"] }
 
+[patch.crates-io]
+frontmatter = { git = "https://github.com/giodamelio/rust-frontmatter", branch = "toml-hacked-version"}
+
 [package.metadata.wasm-pack.profile.release]
 
 # wasm-opt is out of date in wasm-bindgen, so we have to manually

@@ -1,6 +1,6 @@
 use crate::common::Fields;
 use crate::config::FrontmatterConfig;
-use frontmatter::{parse_and_find_content, Yaml};
+use frontmatter::parse_and_find_content;
 use std::collections::HashMap;
 
 pub fn parse_frontmatter(handling: &FrontmatterConfig, buffer: &str) -> (Fields, Box<String>) {
@@ -8,26 +8,27 @@ pub fn parse_frontmatter(handling: &FrontmatterConfig, buffer: &str) -> (Fields,
     match handling {
         FrontmatterConfig::Ignore => default_output,
         FrontmatterConfig::Omit => {
-            if let Ok((_yaml, text)) = parse_and_find_content(&buffer) {
+            if let Ok((_toml, text)) = parse_and_find_content(&buffer) {
                 (HashMap::new(), Box::new(text.trim().to_string()))
             } else {
                 default_output
             }
         }
         FrontmatterConfig::Parse => {
-            if let Ok((Some(Yaml::Hash(map)), text)) = parse_and_find_content(&buffer) {
-                let fields = map
+            if let Ok((Some(value), text)) = parse_and_find_content(&buffer) {
+                let fields: Fields = value
+                    .as_table()
+                    .unwrap()
                     .into_iter()
                     .map(|(k, v)| {
-                        (
-                            k.into_string().unwrap_or_else(|| "".to_string()),
-                            v.clone().into_string().unwrap_or_else(|| {
-                                v.into_i64()
-                                    .map_or("default".to_string(), |i| i.to_string())
-                            }),
-                        )
+                        if v.is_str() {
+                            (k.clone(), v.as_str().unwrap().to_owned())
+                        } else {
+                            (k.clone(), v.to_string())
+                        }
                     })
                     .collect();
+
                 return (fields, Box::new(text.trim().to_string()));
             }
 
@@ -44,12 +45,9 @@ mod tests {
         let expected: (Fields, String) = (HashMap::new(), "this is not".to_string());
         let output = parse_frontmatter(
             &FrontmatterConfig::Omit,
-            &mut r#"---
-this: "is frontmatter"
-"that takes": "multiple lines"
-"and has": 22
-"different formats": +INF
----
+            &mut r#"+++
+this = "is frontmatter"
++++
 
 this is not
         "#
@@ -65,9 +63,7 @@ this is not
         let expected: (Fields, String) = (
             [
                 ("this".to_string(), "is frontmatter".to_string()),
-                ("that takes".to_string(), "multiple lines".to_string()),
-                ("and has".to_string(), "22".to_string()),
-                ("different formats".to_string(), "default".to_string()),
+                ("a_number".to_string(), "22".to_string()),
             ]
             .iter()
             .cloned()
@@ -76,12 +72,10 @@ this is not
         );
         let output = parse_frontmatter(
             &FrontmatterConfig::Parse,
-            &mut r#"---
-this: "is frontmatter"
-"that takes": "multiple lines"
-"and has": 22
-"different formats": +INF
----
+            &mut r#"+++
+this = "is frontmatter"
+a_number = 22
++++
 
 this is not
         "#
