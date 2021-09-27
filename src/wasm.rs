@@ -35,7 +35,7 @@ impl<T: Sized + Serialize, E: Display> From<Result<T, E>> for WasmOutput {
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
+    #[wasm_bindgen(js_namespace = ["console"])]
     fn log(s: &str);
 }
 
